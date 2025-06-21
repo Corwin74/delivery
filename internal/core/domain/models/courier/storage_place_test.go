@@ -54,17 +54,23 @@ func TestCanStoreExceedsCapacity(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestCanStore(t *testing.T) {
+func TestStore(t *testing.T) {
 	storagePlace, err := NewStoragePlace("box", 5)
 	assert.Nil(t, err)
 
+	// Try to store order that exceeds capacity
 	err = storagePlace.Store(uuid.New(), 10)
 	assert.ErrorIs(t, err, ErrCannotStoreOrderInThisStoragePlace)
 
-	err = storagePlace.Store(uuid.New(), 5)
+	// Store order that fits exactly
+	orderID1 := uuid.New()
+	err = storagePlace.Store(orderID1, 5)
 	assert.Nil(t, err)
+	assert.Equal(t, orderID1, *storagePlace.OrderID())
 
+	// Try to store another order when already occupied
 	err = storagePlace.Store(uuid.New(), 1)
+	assert.ErrorIs(t, err, ErrCannotStoreOrderInThisStoragePlace)
 }
 
 func TestClearStore(t *testing.T) {
