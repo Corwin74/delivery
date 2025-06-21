@@ -1,8 +1,9 @@
 package courier
 
 import (
+	"delivery/internal/pkg/errs"
 	"errors"
-	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 )
@@ -10,8 +11,6 @@ import (
 var (
 	ErrCannotStoreOrderInThisStoragePlace = errors.New("cannot store order in this storage place")
 	ErrOrderNotStoredInThisPlace          = errors.New("order is not stored in this place")
-	ErrInvalidOrderID                     = errors.New("order id cannot be nil")
-	ErrInvalidVolume                      = errors.New("volume must be greater than zero")
 )
 
 type StoragePlace struct {
@@ -23,11 +22,11 @@ type StoragePlace struct {
 
 func NewStoragePlace(name string, totalVolume int) (*StoragePlace, error) {
 	if name == "" {
-		return nil, errors.New("name cannot be empty")
+		return nil, errs.NewValueIsRequiredError("name")
 	}
 
 	if totalVolume <= 0 {
-		return nil, fmt.Errorf("totalVolume cannot be negative, got: %d", totalVolume)
+		return nil, errs.NewValueIsOutOfRangeError("totalVolume", totalVolume, 1, math.MaxInt)
 	}
 
 	return &StoragePlace{
@@ -64,7 +63,7 @@ func (s *StoragePlace) OrderID() *uuid.UUID {
 
 func (s *StoragePlace) CanStore(volume int) (bool, error) {
 	if volume <= 0 {
-		return false, ErrInvalidVolume
+		return false, errs.NewValueIsOutOfRangeError("volume", volume, 1, math.MaxInt)
 	}
 
 	if s.isOccupied() {
@@ -80,11 +79,11 @@ func (s *StoragePlace) CanStore(volume int) (bool, error) {
 
 func (s *StoragePlace) Store(order uuid.UUID, volume int) error {
 	if order == uuid.Nil {
-		return ErrInvalidOrderID
+		return errs.NewValueIsRequiredError("order")
 	}
 
 	if volume <= 0 {
-		return ErrInvalidVolume
+		return errs.NewValueIsOutOfRangeError("volume", volume, 1, math.MaxInt)
 	}
 
 	ok, err := s.CanStore(volume)
@@ -103,7 +102,7 @@ func (s *StoragePlace) Store(order uuid.UUID, volume int) error {
 
 func (s *StoragePlace) Clear(order uuid.UUID) error {
 	if order == uuid.Nil {
-		return ErrInvalidOrderID
+		return errs.NewValueIsRequiredError("order")
 	}
 
 	if *s.orderID != order {
