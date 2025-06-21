@@ -116,6 +116,10 @@ func (c *Courier) TakeOrder(order *order.Order) error {
 }
 
 func (c *Courier) CompleteOrder(order *order.Order) error {
+	if order == nil {
+		return errs.NewValueIsRequiredError("order")
+	}
+
 	for _, place := range c.Places() {
 		if place.OrderID() != nil && order.ID() == *place.OrderID() {
 			return place.Clear(order.ID())
