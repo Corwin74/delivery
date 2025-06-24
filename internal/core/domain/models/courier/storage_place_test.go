@@ -1,8 +1,8 @@
 package courier
 
 import (
-	"errors"
-	"fmt"
+	"delivery/internal/pkg/errs"
+	"math"
 	"testing"
 
 	"github.com/google/uuid"
@@ -11,29 +11,29 @@ import (
 
 func TestNewStoragePlace(t *testing.T) {
 	tests := []struct {
-		testName	string	
-		name       string
+		testName    string
+		name        string
 		totalVolume int
-		expected   error
+		expected    error
 	}{
-		
-		{	
-			testName:  "invalid name",
-			name:       "",
+
+		{
+			testName:    "invalid name",
+			name:        "",
 			totalVolume: 10,
-			expected:   errors.New("name cannot be empty"),
+			expected:    errs.NewValueIsRequiredError("name"),
 		},
 		{
-			testName:  "invalid total volume",
-			name:       "box",
+			testName:    "invalid total volume",
+			name:        "box",
 			totalVolume: -1,
-			expected:   fmt.Errorf("totalVolume cannot be negative, got: %d", -1),
+			expected:    errs.NewValueIsOutOfRangeError("totalVolume", -1, 1, math.MaxInt),
 		},
 		{
-			testName:  "valid storage place",
-			name:       "box",
+			testName:    "valid storage place",
+			name:        "box",
 			totalVolume: 10,
-			expected:   nil,
+			expected:    nil,
 		},
 	}
 
@@ -54,19 +54,24 @@ func TestCanStoreExceedsCapacity(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestCanStore(t *testing.T) {
+func TestStore(t *testing.T) {
 	storagePlace, err := NewStoragePlace("box", 5)
 	assert.Nil(t, err)
 
+	// Try to store order that exceeds capacity
 	err = storagePlace.Store(uuid.New(), 10)
 	assert.ErrorIs(t, err, ErrCannotStoreOrderInThisStoragePlace)
 
-	err = storagePlace.Store(uuid.New(), 5)
+	// Store order that fits exactly
+	orderID1 := uuid.New()
+	err = storagePlace.Store(orderID1, 5)
 	assert.Nil(t, err)
+	assert.Equal(t, orderID1, *storagePlace.OrderID())
 
+	// Try to store another order when already occupied
 	err = storagePlace.Store(uuid.New(), 1)
+	assert.ErrorIs(t, err, ErrCannotStoreOrderInThisStoragePlace)
 }
-
 
 func TestClearStore(t *testing.T) {
 	storagePlace, err := NewStoragePlace("box", 5)
@@ -75,7 +80,7 @@ func TestClearStore(t *testing.T) {
 	orderID := uuid.New()
 
 	err = storagePlace.Store(orderID, 3)
-	assert.Nil(t, err) 
+	assert.Nil(t, err)
 
 	err = storagePlace.Clear(uuid.New())
 	assert.ErrorIs(t, err, ErrOrderNotStoredInThisPlace)
@@ -102,3 +107,20 @@ func TestGetters(t *testing.T) {
 	assert.Equal(t, orderID, *storagePlace.OrderID())
 }
 
+func TestIsOccupied(t *testing.T) {
+	storagePlace, err := NewStoragePlace("box", 5)
+	assert.Nil(t, err)
+
+	assert.False(t, storagePlace.isOccupied())
+
+	orderID := uuid.New()
+	err = storagePlace.Store(orderID, 3)
+	assert.Nil(t, err)
+
+	assert.True(t, storagePlace.isOccupied())
+
+	err = storagePlace.Clear(orderID)
+	assert.Nil(t, err)
+
+	assert.False(t, storagePlace.isOccupied())
+}
