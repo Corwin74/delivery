@@ -57,8 +57,8 @@ func (o *Order) Volume() int {
 	return o.volume
 }
 
-func (o *Order) Status() string {
-	return o.status.String()
+func (o *Order) Status() int {
+	return int(o.status)
 }
 
 func (o *Order) Equals(other *Order) bool {
